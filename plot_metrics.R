@@ -1,6 +1,6 @@
 # ROC AUC
-roc_li <- dir("gut_metagenome_disease/ROC2/")
-roc_auc_li <- lapply(paste0("gut_metagenome_disease/", "ROC2/", roc_li, "/ROC.txt"),
+roc_li <- dir("gut_metagenome_disease/ROC/")
+roc_auc_li <- lapply(paste0("gut_metagenome_disease/", "ROC/", roc_li, "/ROC.txt"),
                                             function(x){read_tsv(x, col_names = T)})
 names(roc_auc_li) <- roc_li
 
@@ -24,7 +24,7 @@ roc_auc_tbl %>%
   my_theme 
   
 # metrics
-metrics_li <- lapply(paste0("gut_metagenome_disease/", "ROC2/", roc_li, "/metrics.txt"), 
+metrics_li <- lapply(paste0("gut_metagenome_disease/", "ROC/", roc_li, "/metrics.txt"), 
                                                   function(x) {read_delim(x, col_names = c("metrics", "ratio"), delim=":")})
 head(metrics_li[[1]])
 
