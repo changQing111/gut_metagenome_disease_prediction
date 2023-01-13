@@ -8,6 +8,8 @@ def union_composite(file_name, hash_map, all_info_li):
     for line in comp_content:
         li = line.rstrip().split("\t")
         ratio = li[0]
+        if float(ratio) < 0.01:
+            continue
         species = ";".join(li[1:])
         hash_map2[species] = ratio
         if species not in hash_map:
