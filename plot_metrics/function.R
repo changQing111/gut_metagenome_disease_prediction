@@ -6,7 +6,7 @@ my_theme <- theme(panel.background = element_blank(),
                   axis.title.x = element_text(size=14),
                   axis.text.y = element_text(size=12, colour = "black"),
                   axis.title.y = element_text(size=14),
-                  strip.text.x = element_text(size = 16), 
+                  strip.text.x = element_text(size = 14), 
                   panel.border = element_rect(colour = "black", fill=NA, size = 1))
 
 
@@ -43,6 +43,19 @@ get_auc_df <- function(disease, target_dir1="metaphlan_train_res", target_dir2="
   return(df_auc)
 }
 
+get_metric_df <- function(disease, metric, target_dir1="metaphlan_train_res", target_dir2="kssd_train_res",
+                          tools_1="metaphlan3", tools_2="kssd")  {
+  metrics_li1 <- read_metrics_data(target_dir1, disease)
+  metrics_li2 <- read_metrics_data(target_dir2, disease)
+  
+  df1 <- select_metric(metric, metrics_li1, tools_1) 
+  df2 <- select_metric(metric, metrics_li2, tools_2)
+  
+  df_metric <- rbind(df1, df2)
+  return(df_metric)
+  
+}
+
 plot_auc_violin <- function(df, disease) {
   pdf(paste0(disease, "_AUC.pdf"), width = 6, height = 5)
   p <- df %>% ggplot(aes(x=tools, y=`AUC area`)) +
@@ -71,7 +84,7 @@ tpr_mean <- function(roc) {
   }
   return(tpr)
 }
-tpr_mean(roc_li_1[[2]])
+#tpr_mean(roc_li_1[[2]])
 
 # add 95% CI
 add_ci <- function(roc_li, tool) {
@@ -120,4 +133,17 @@ plot_ROC_curve <- function(df, title) {
     labs(x= "False positive rate", y="True positive rate", title = title) +
     my_theme + theme(legend.position = c(0.8,0.2))
   return(p)
+}
+
+ci_value <- function(auc_df, tool) {
+  arr = auc_df$`AUC area`[auc_df$tools==tool]
+  len = length(arr)
+  mean_arr <- mean(arr)
+  sd_arr <- sd(arr)
+  #ci_l <- mean_arr - 1.96*sd_arr/sqrt(len)
+  #ci_r <- mean_arr + 1.96*sd_arr/sqrt(len)
+  #df <- data.frame(AUC=mean_arr, CI_l=ci_l, CI_r=ci_r, tools=tool)
+  se = sd_arr/sqrt(len)
+  df <- data.frame(AUC=mean_arr, SE=se, tools=tool)
+  return(df)
 }
