@@ -5,13 +5,12 @@ metrics <- c("accuracy", "precision", "recall", "F1", "AUC area")
 data_set <- c("cirrhosis_PRJEB6337", "CRC_PRJEB6070", "IBD_PRJEB2054")
 target_dir1 = "metaphlan_filter_train_res/"
 target_dir2 = "kssd_filter_train_res/"
-# accuracy
+
 all_accuracy_df <- vector("list", length = length(data_set))
 for(i in 1:length(data_set)) {
   all_accuracy_df[[i]]  <- get_metric_df(data_set[i], "accuracy", 
                                          target_dir1 = "metaphlan_filter_train_res/", 
                                          target_dir2 = "kssd_filter_train_res/")
-  #plot_auc_violin(i)  
   all_accuracy_df[[i]]$disease <- data_set[i]
 }
 all_accuracy <- data.frame()
@@ -32,7 +31,6 @@ for(i in 1:length(data_set)) {
   all_auc_df[[i]]  <- get_metric_df(data_set[i], "AUC area",
                                     target_dir1 = target_dir1,
                                     target_dir2 = target_dir2)
-  #plot_auc_violin(i)  
   all_auc_df[[i]]$disease <- data_set[i]
 }
 all_auc_df[[1]] %>% View()
