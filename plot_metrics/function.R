@@ -84,7 +84,6 @@ tpr_mean <- function(roc) {
   }
   return(tpr)
 }
-#tpr_mean(roc_li_1[[2]])
 
 # add 95% CI
 add_ci <- function(roc_li, tool) {
@@ -140,9 +139,6 @@ ci_value <- function(auc_df, tool) {
   len = length(arr)
   mean_arr <- mean(arr)
   sd_arr <- sd(arr)
-  #ci_l <- mean_arr - 1.96*sd_arr/sqrt(len)
-  #ci_r <- mean_arr + 1.96*sd_arr/sqrt(len)
-  #df <- data.frame(AUC=mean_arr, CI_l=ci_l, CI_r=ci_r, tools=tool)
   se = sd_arr/sqrt(len)
   df <- data.frame(AUC=mean_arr, SE=se, tools=tool)
   return(df)
