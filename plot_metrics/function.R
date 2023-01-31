@@ -7,9 +7,7 @@ my_theme <- theme(panel.background = element_blank(),
                   axis.text.y = element_text(size=12, colour = "black"),
                   axis.title.y = element_text(size=14),
                   strip.text.x = element_text(size = 14), 
-                  panel.border = element_rect(colour = "black", fill=NA, size = 1))
-
-
+                  panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))
 
 # ROC curve values
 read_roc_data <- function(target_dir, data_set, ...) {
@@ -32,17 +30,15 @@ read_metrics_data <- function(target_dir, tool, disease, ...) {
   return(metrics_df)
 }
 
-
 # get metaphlan3 and kssd metrics
-get_metric_df <- function(disease, metric, target_dir1="metaphlan_train_res", target_dir2="kssd_train_res",
-                          tools_1="metaphlan3", tools_2="kssd")  {
+get_metric_df <- function(disease, metric, target_dir1, target_dir2,
+                          tools_1, tools_2)  {
   metrics_df1 <- read_metrics_data(target_dir1, tool = tools_1, disease)
   metrics_df2 <- read_metrics_data(target_dir2, tool = tools_2, disease)
 
   df_metric <- rbind(metrics_df1, metrics_df2)
   return(df_metric)
 }
-
 
 # list transform datafarm
 li_to_df <- function(li) {
@@ -81,7 +77,6 @@ tpr_mean <- function(roc) {
   }
   return(tpr)
 }
-#tpr_mean(roc_li_1[[2]])
 
 # add 95% CI
 add_ci <- function(roc_li, tool) {
@@ -112,8 +107,8 @@ add_ci <- function(roc_li, tool) {
   return(roc_curve_tbl)
 }
 
-get_roc_curve_data <- function(disease, target_dir1="metaphlan_train_res", target_dir2="kssd_train_res",
-                               tools_1="metaphlan3", tools_2="kssd") {
+get_roc_curve_data <- function(disease, target_dir1, target_dir2,
+                               tools_1, tools_2) {
   roc_li_1 <- read_roc_data(target_dir1, disease)
   roc_li_2 <- read_roc_data(target_dir2, disease)
   
@@ -127,8 +122,8 @@ plot_ROC_curve <- function(df, title) {
   y = x
   subline = data.frame(x = x, y=y)
   p <- ggplot(df, aes(x=FPR, y=TPR)) +
-    geom_line(data = subline, aes(x = x, y=y), colour="#990000", linetype="dashed", size=1) +
-    geom_line(aes(colour=tools), size = 1) +
+    geom_line(data = subline, aes(x = x, y=y), colour="#990000", linetype="dashed", linewidth=1) +
+    geom_line(aes(colour=tools), linewidth = 1) +
     geom_ribbon(aes(ymin = CI_l, ymax = CI_r, fill=tools), alpha=0.3) +
     labs(x= "False positive rate", y="True positive rate", title = title) +
     my_theme + theme(legend.position = c(0.8,0.2))
@@ -148,16 +143,12 @@ ci_value <- function(auc_df, tool) {
   return(df)
 }
 
-
-
 # plot metrics boxplot
 plot_metric_box <- function(df, metric) {
   p <- ggplot(df, aes(x=disease, y=ratio, fill=tools)) +
     geom_boxplot(width=0.5,position=position_dodge(0.8), alpha=0.6, outlier.shape = NA) + 
     geom_jitter(aes(colour=tools), position = position_jitterdodge(dodge.width = 0.5)) +
     labs(x="", y=metric) +
-    my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1)) +
-    scale_y_continuous(expand = c(0, 0),limits=c(0.8, 1.01),
-                       breaks = c(seq(0.8, 1, by=0.05)))
+    my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))             
   return(p)
 }
