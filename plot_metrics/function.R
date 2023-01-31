@@ -9,13 +9,7 @@ my_theme <- theme(panel.background = element_blank(),
                   strip.text.x = element_text(size = 14), 
                   panel.border = element_rect(colour = "black", fill=NA, size = 1))
 
-# read metrics: accuracy, precision, recall, F1, AUROC value
-read_metrics_data <- function(target_dir, data_set, ...) {
-  disease_li <- paste(target_dir, data_set, sep = "/")
-  metrics_li <- lapply(paste(disease_li, dir(disease_li), "metrics.txt", sep = "/"), 
-                       function(x) {read_delim(x, col_names = c("metrics", "ratio"), delim=":")})  
-  return(metrics_li)
-}
+
 
 # ROC curve values
 read_roc_data <- function(target_dir, data_set, ...) {
@@ -25,38 +19,31 @@ read_roc_data <- function(target_dir, data_set, ...) {
   return(roc_li)
 }
 
-select_metric <- function(metric, metrics_li, tool_name, ...) {
-  df <- data.frame(lapply(metrics_li, function(x) 
-                                {x$ratio[x$metrics==metric]}) %>% unlist(), tool_name)
-  names(df) <- c(metric, "tools")
-  return(df)
+# read metrics: accuracy, precision, recall, F1, AUROC value
+read_metrics_data <- function(target_dir, tool, disease, ...) {
+  disease_li <- paste(target_dir, disease, sep = "/")
+  metrics_li <- lapply(paste(disease_li, dir(disease_li), "metrics.txt", sep = "/"), 
+                       function(x) {read_delim(x, col_names = c("metrics", "ratio"), delim=":")})
+  for(i in 1:length(metrics_li)) {
+    metrics_li[[i]]$disease <- disease
+    metrics_li[[i]]$tools <- tool
+  }
+  metrics_df <- li_to_df(metrics_li)
+  return(metrics_df)
 }
-# get metaphlan3 and kssd AUC
-get_auc_df <- function(disease, target_dir1="metaphlan_train_res", target_dir2="kssd_train_res",
-                       tools_1="metaphlan3", tools_2="kssd") {
-  metrics_li1 <- read_metrics_data(target_dir1, disease)
-  metrics_li2 <- read_metrics_data(target_dir2, disease)
-  
-  df1 <- select_metric("AUC area", metrics_li1, tools_1) 
-  df2 <- select_metric("AUC area", metrics_li2, tools_2)
-  
-  df_auc <- rbind(df1, df2)
-  return(df_auc)
-}
+
 
 # get metaphlan3 and kssd metrics
 get_metric_df <- function(disease, metric, target_dir1="metaphlan_train_res", target_dir2="kssd_train_res",
                           tools_1="metaphlan3", tools_2="kssd")  {
-  metrics_li1 <- read_metrics_data(target_dir1, disease)
-  metrics_li2 <- read_metrics_data(target_dir2, disease)
-  
-  df1 <- select_metric(metric, metrics_li1, tools_1) 
-  df2 <- select_metric(metric, metrics_li2, tools_2)
-  
-  df_metric <- rbind(df1, df2)
+  metrics_df1 <- read_metrics_data(target_dir1, tool = tools_1, disease)
+  metrics_df2 <- read_metrics_data(target_dir2, tool = tools_2, disease)
+
+  df_metric <- rbind(metrics_df1, metrics_df2)
   return(df_metric)
-  
 }
+
+
 # list transform datafarm
 li_to_df <- function(li) {
   df <- data.frame()
@@ -64,6 +51,18 @@ li_to_df <- function(li) {
     df <- rbind(df, li[[i]])
   }
   return(df)
+}
+
+plot_auc_violin <- function(df, disease) {
+  pdf(paste0(disease, "_AUC.pdf"), width = 6, height = 5)
+  p <- df %>% ggplot(aes(x=tools, y=`AUC area`)) +
+    geom_violin(aes(fill=tools), width=0.7, trim = FALSE) + 
+    geom_boxplot(width=0.1) + 
+    geom_jitter(colour="grey", width = 0.1) +
+    labs(x="", y="AUC", title = disease) +
+    my_theme 
+  print(p)
+  dev.off()  
 }
 
 # 20 groups ROC curve
@@ -149,19 +148,11 @@ ci_value <- function(auc_df, tool) {
   return(df)
 }
 
-merge_diff_tools_disease <- function(data_set, metric, target_dir1, target_dir2) {
-  all_metri_li <- lapply(data_set, function(x) {
-    get_metric_df(x, metric, target_dir1, target_dir2)})
-  for(i in 1:length(data_set)) {
-    all_metri_li[[i]]$disease <- data_set[i]
-  }
-  all_metri_df <- li_to_df(all_metri_li)
-  return(all_metri_df)
-}
+
 
 # plot metrics boxplot
-plot_metric_box <- function(df) {
-  p <- ggplot(df, aes(x=disease, y=accuracy, fill=tools)) +
+plot_metric_box <- function(df, metric) {
+  p <- ggplot(df, aes(x=disease, y=ratio, fill=tools)) +
     geom_boxplot(width=0.5,position=position_dodge(0.8), alpha=0.6, outlier.shape = NA) + 
     geom_jitter(aes(colour=tools), position = position_jitterdodge(dodge.width = 0.5)) +
     labs(x="", y=metric) +
@@ -170,4 +161,3 @@ plot_metric_box <- function(df) {
                        breaks = c(seq(0.8, 1, by=0.05)))
   return(p)
 }
-
