@@ -8,15 +8,15 @@ source("func.R")
 # default args
 metrics <- c("accuracy", "precision", "recall", "F1", "AUC area")
 data_set <- "cirrhosis_PRJEB6337,CRC_PRJEB6070,IBD_PRJEB2054"
-target_dir1 = "metaphlan_filter_train_res/" # args1
-target_dir2 = "kssd_filter_train_res/"  # args2
+target_dir1 = "metaphlan_train_res/" # args1
+target_dir2 = "kssd_train_res/"  # args2
 
 # parse args
 parser <- OptionParser(description = "kssd and metaphlan3 comparison")
-parser <- add_option(parser, c("-i1", "--input_dir1"), default=target_dir1, help="Input first dir")
-parser <- add_option(parser, c("-i2", "--input_dir2"), default=target_dir2, help="Input second dir")
+parser <- add_option(parser, c("-1", "--input_dir1"), default=target_dir1, help="Input first dir")
+parser <- add_option(parser, c("-2", "--input_dir2"), default=target_dir2, help="Input second dir")
 parser <- add_option(parser, c("-m", "--metric"), type = "character", 
-                     help="accuracy, precision, recall, F1, AUC area, ROC")
+                     help="all(accuracy, precision, recall, F1, AUC) or ROC")
 parser <- add_option(parser, c("-s", "--set"), default = data_set, type = "character", help = "data set, 
                             If multiple entries are entered, separate them with commas")
 parser <- add_option(parser, c("-o", "--out"), type = "character", help="out file name")
@@ -38,19 +38,25 @@ o <- parse$out
 if(!dir.exists(o)) {
   dir.create(o)
 }
-setwd(o)
 
 # metrics boxplot
 if(m != "ROC") {
-  all_metri_df <- merge_diff_tools_disease(s, m, i1, i2)
-  write.table(all_metri_df, paste0(m, ".txt"), quote = F, row.names = F)
-  pdf(paste0(m, "_metrics.pdf"), width = 5, height = 5)
-  plot_metric_box(all_metri_df)  
+  
+  all_metric_li <- lapply(s, function(x) {get_metric_df(disease = x)})
+  all_metric_df <- li_to_df(all_metric_li)
+  write.table(all_metric_df, paste0(o, "/", m, ".txt"), quote = F, row.names = F)
+  for(i in unique(all_metric_df$metrics)) {
+    pdf(paste0(o, "/", i, "_metrics.pdf"), width = 5, height = 5)
+    p <- all_metric_df[all_metric_df$metrics==i,] %>% plot_metric_box(i) 
+    print(p)
+    dev.off()
+  }
+
 } else { # ROC curve
   all_roc_curve_df <- lapply(s, function(x) {get_roc_curve_data(x)})
   for(i in 1:length(all_roc_curve_df)) {
-    write.table(all_roc_curve_df[[i]], paste0(s[i], "_roc_curve_value.txt", quote=F, row.names = F))
-    pdf(paste0(s[i], "_ROC_curve.pdf"), width = 5, height = 5)
+    write.table(all_roc_curve_df[[i]], paste0(o, "/", s[i], "_roc_curve_value.txt", quote=F, row.names = F))
+    pdf(paste0(o, "/", s[i], "_ROC_curve.pdf"), width = 5, height = 5)
     p <- plot_ROC_curve(all_roc_curve_df[[i]], s[i]) 
     print(p)
     dev.off()
