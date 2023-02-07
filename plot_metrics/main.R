@@ -1,5 +1,6 @@
 suppressPackageStartupMessages(library("tidyverse"))
 suppressPackageStartupMessages(library("optparse"))
+suppressPackageStartupMessages(library("Rmisc")) 
 
 # load function
 source("func.R")
@@ -11,17 +12,19 @@ target_dir1 = "metaphlan_train_res" # args1
 target_dir2 = "kssd_train_res"  # args2
 tools1 = "metaphlan3"
 tools2 = "kssd"
-
+plot_type = "boxplot"
 # parse args
 parser <- OptionParser(description = "kssd and metaphlan3 comparison")
 parser <- add_option(parser, c("--input_dir1"), default=target_dir1, help="Input first dir")
 parser <- add_option(parser, c("--input_dir2"), default=target_dir2, help="Input second dir")
-parser <- add_option(parser, c("--tool1"), default=tools1, help="Input first tool")
-parser <- add_option(parser, c("--tool2"), default=tools2, help="Input second tool")
+parser <- add_option(parser, c("--tools1"), default=tools1, help="Input first tool")
+parser <- add_option(parser, c("--tools2"), default=tools2, help="Input second tool")
 parser <- add_option(parser, c("-m", "--metric"), type = "character", 
                      help="all(accuracy, precision, recall, F1, AUC) or ROC")
 parser <- add_option(parser, c("-s", "--set"), default = data_set, type = "character", help = "data set, 
                             If multiple entries are entered, separate them with commas")
+parser <- add_option(parser, c("-p", "--plot"), default=plot_type, type="character", 
+                            help="choose a plot type (boxplot or barplot)")
 parser <- add_option(parser, c("-o", "--out"), type = "character", help="out file name")
 
 parse <- parse_args(parser)
@@ -38,13 +41,14 @@ t1 <- parse$tools1
 t2 <- parse$tools2
 m <- parse$metric
 s <- str_split(parse$set, ",") %>% unlist()
+plt <- parse$plot
 o <- parse$out
 
 if(!dir.exists(o)) {
   dir.create(o)
 }
 
-# metrics boxplot
+# metrics boxplot or barplot
 if(m != "ROC") {
   all_metric_li <- lapply(s, function(x) { 
                               get_metric_df(disease = x, 
@@ -54,11 +58,21 @@ if(m != "ROC") {
                                             tools_2 = t2)})
   all_metric_df <- li_to_df(all_metric_li)
   write.table(all_metric_df, paste0(o, "/", m, "_metrics.txt"), quote = F, row.names = F)
-  for(i in unique(all_metric_df$metrics)) {
-    pdf(paste0(o, "/", i, "_metrics.pdf"), width = 5, height = 5)
-    p <- all_metric_df[all_metric_df$metrics==i,] %>% plot_metric_box(i) 
-    print(p)
-    dev.off()
+  if(plt == "boxplot") {
+    for(i in unique(all_metric_df$metrics)) {
+      pdf(paste0(o, "/", i, "_metrics.pdf"), width = 5, height = 5)
+      p <- all_metric_df[all_metric_df$metrics==i,] %>% plot_metric_box(i) 
+      print(p)
+      dev.off()
+    }
+  }
+  else {
+    for(i in unique(all_metric_df$metrics)) {
+      pdf(paste0(o, "/", i, "_metrics.pdf"), width = 5, height = 5)
+      p <- all_metric_df[all_metric_df$metrics==i,] %>% plot_metric_box(i)
+      print(p)
+      dev.off()
+    }
   }
 
 } else { # ROC curve
