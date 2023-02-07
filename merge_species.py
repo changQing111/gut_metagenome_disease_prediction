@@ -60,6 +60,7 @@ if __name__=="__main__":
     if not os.path.exists(tmp_dir):
         os.mkdir(tmp_dir)
     abundance = args.filter
+    
     for i in file_o:
         i = i.rstrip()
         f_name_li.append(i)
@@ -78,9 +79,10 @@ if __name__=="__main__":
                 composite_dict[i].append("0.0000")
 
     res_dir = args.out
+    out_name = args.name
     if not os.path.exists(res_dir):
         os.mkdir(res_dir)
-    out_file = open(res_dir + "/" + sys.argv[2] + ".txt", "w")
+    out_file = open(res_dir + "/" + out_name + ".txt", "w")
     all_species = composite_dict.keys()
     out_file.write("run_accession" + '\t' + "\t".join(all_species) + '\n')
 
