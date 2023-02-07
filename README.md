@@ -13,10 +13,10 @@ $ bash composite_gtdb.sh SRR22280929_sketch
 #### 3. Merge all data of a data set
 ```shell
 $ ls *_profile|cut -f1 -d"_" > file_list.txt
-$ python merge_species.py file_list.txt
+$ python merge_species.py -l file_list.txt -n IBD_PRJEB2054
 ```
 
-#### 4.Train 20 times
+#### 4. Train 20 times
 ```shell
 $ for i in {1..20};do python model_train.py all_disease_info.csv IBD_PRJEB2054.txt -f 5 -m RF -o IBD_PRJEB2054/IBD_PRJEB2054_${i};done
 ```
