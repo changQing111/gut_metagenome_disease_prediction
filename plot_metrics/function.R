@@ -9,6 +9,8 @@ my_theme <- theme(panel.background = element_blank(),
                   strip.text.x = element_text(size = 14), 
                   panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))
 
+
+
 # ROC curve values
 read_roc_data <- function(target_dir, data_set, ...) {
   disease_li <- paste(target_dir, data_set, sep = "/")
@@ -18,27 +20,31 @@ read_roc_data <- function(target_dir, data_set, ...) {
 }
 
 # read metrics: accuracy, precision, recall, F1, AUROC value
-read_metrics_data <- function(target_dir, tool, disease, ...) {
+read_metrics_data <- function(target_dir, disease, tool=NA, ...) {
   disease_li <- paste(target_dir, disease, sep = "/")
   metrics_li <- lapply(paste(disease_li, dir(disease_li), "metrics.txt", sep = "/"), 
                        function(x) {read_delim(x, col_names = c("metrics", "ratio"), delim=":")})
   for(i in 1:length(metrics_li)) {
     metrics_li[[i]]$disease <- disease
-    metrics_li[[i]]$tools <- tool
+    if(!is.na(tool)) {
+      metrics_li[[i]]$tools <- tool 
+    }
   }
   metrics_df <- li_to_df(metrics_li)
   return(metrics_df)
 }
 
+
 # get metaphlan3 and kssd metrics
 get_metric_df <- function(disease, metric, target_dir1, target_dir2,
                           tools_1, tools_2)  {
-  metrics_df1 <- read_metrics_data(target_dir1, tool = tools_1, disease)
-  metrics_df2 <- read_metrics_data(target_dir2, tool = tools_2, disease)
+  metrics_df1 <- read_metrics_data(target_dir1, disease, tool = tools_1)
+  metrics_df2 <- read_metrics_data(target_dir2, disease, tool = tools_2)
 
   df_metric <- rbind(metrics_df1, metrics_df2)
   return(df_metric)
 }
+
 
 # list transform datafarm
 li_to_df <- function(li) {
@@ -47,18 +53,6 @@ li_to_df <- function(li) {
     df <- rbind(df, li[[i]])
   }
   return(df)
-}
-
-plot_auc_violin <- function(df, disease) {
-  pdf(paste0(disease, "_AUC.pdf"), width = 6, height = 5)
-  p <- df %>% ggplot(aes(x=tools, y=`AUC area`)) +
-    geom_violin(aes(fill=tools), width=0.7, trim = FALSE) + 
-    geom_boxplot(width=0.1) + 
-    geom_jitter(colour="grey", width = 0.1) +
-    labs(x="", y="AUC", title = disease) +
-    my_theme 
-  print(p)
-  dev.off()  
 }
 
 # 20 groups ROC curve
@@ -77,6 +71,7 @@ tpr_mean <- function(roc) {
   }
   return(tpr)
 }
+#tpr_mean(roc_li_1[[2]])
 
 # add 95% CI
 add_ci <- function(roc_li, tool) {
@@ -143,12 +138,29 @@ ci_value <- function(auc_df, tool) {
   return(df)
 }
 
+
+
 # plot metrics boxplot
 plot_metric_box <- function(df, metric) {
   p <- ggplot(df, aes(x=disease, y=ratio, fill=tools)) +
     geom_boxplot(width=0.5,position=position_dodge(0.8), alpha=0.6, outlier.shape = NA) + 
-    geom_jitter(aes(colour=tools), position = position_jitterdodge(dodge.width = 0.5)) +
+    geom_jitter(aes(colour=tools), position = position_jitterdodge(dodge.width = 0.2)) +
     labs(x="", y=metric) +
-    my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))             
+    my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1)) 
+    #+ scale_y_continuous(expand = c(0, 0),limits=c(0.8, 1.01),
+                      #breaks = c(seq(0.8, 1, by=0.05))
+                
+  return(p)
+}
+
+# plot metrics barplot
+plot_bar <- function(df, metric) {
+  df_se <- summarySE(df, measurevar = "ratio", groupvars = c("disease", "tools"))
+  p <- ggplot(df_se, aes(x=disease, y=ratio)) +
+        geom_bar(aes(fill=tools), stat = "identity", width = 0.5, alpha=0.6) +
+        geom_jitter(data = df, mapping = aes(x=disease, y=ratio), width = 0.2, alpha=0.5) +
+        geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se), width=.1, linewidth=1) +
+        labs(x="", y=metric) +
+        my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1)) 
   return(p)
 }
