@@ -2,7 +2,11 @@
 
 #### 1. Download SRA data from NCBI and ENA ,then sketch data by kssd
 ```shell
-$ bash sketch.sh SRR22280929
+$ bash sketch.sh SRR22280929 &
+```
+#### multi-task running
+```shell
+$ bash sleep_run.sh run_list.txt &
 ```
 
 #### 2. Profiling
