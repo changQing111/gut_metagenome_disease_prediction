@@ -7,9 +7,9 @@ def read_params():
     parser = argparse.ArgumentParser(description="merge all sample's species into a table")
     # add arguments
     parser.add_argument("-l", "--list", action="store", help="Input a file list")
-    parser.add_argument("-t", "--tmp", default="tmpout", action="store", help="tmp file dir")
-    parser.add_argument("-f", "--filter", type=float, default=0.00, action="store", help="filter low abundance species")
-    parser.add_argument("-o", "--out", default="filter_result", action="store", help="last result dir")
+    parser.add_argument("-t", "--tmp", default="tmpout", action="store", help="tmp file dir, default: tmp")
+    parser.add_argument("-f", "--filter", type=float, default=0.00, action="store", help="filter low abundance species, default: 0.00")
+    parser.add_argument("-o", "--out", default="filter_result", action="store", help="last result dir, default: filter_result")
     parser.add_argument("-n", "--name", action="store", help="output file name")
     args = parser.parse_args()
     return args
