@@ -9,8 +9,6 @@ my_theme <- theme(panel.background = element_blank(),
                   strip.text.x = element_text(size = 14), 
                   panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))
 
-
-
 # ROC curve values
 read_roc_data <- function(target_dir, data_set, ...) {
   disease_li <- paste(target_dir, data_set, sep = "/")
@@ -138,13 +136,11 @@ ci_value <- function(auc_df, tool) {
   return(df)
 }
 
-
-
 # plot metrics boxplot
 plot_metric_box <- function(df, metric) {
   p <- ggplot(df, aes(x=disease, y=ratio, fill=tools)) +
-    geom_boxplot(width=0.5,position=position_dodge(0.8), alpha=0.6, outlier.shape = NA) + 
-    geom_jitter(aes(colour=tools), position = position_jitterdodge(dodge.width = 0.2)) +
+    geom_boxplot(width=0.5,position=position_dodge(0.9), alpha=0.6, outlier.shape = NA) + 
+    geom_jitter(aes(colour=tools), position = position_jitterdodge(dodge.width = 0.9)) +
     labs(x="", y=metric) +
     my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1)) 
     #+ scale_y_continuous(expand = c(0, 0),limits=c(0.8, 1.01),
@@ -154,13 +150,13 @@ plot_metric_box <- function(df, metric) {
 }
 
 # plot metrics barplot
-plot_bar <- function(df, metric) {
+plot_metric_bar <- function(df, metric) {
   df_se <- summarySE(df, measurevar = "ratio", groupvars = c("disease", "tools"))
-  p <- ggplot(df_se, aes(x=disease, y=ratio)) +
-        geom_bar(aes(fill=tools), stat = "identity", width = 0.5, alpha=0.6) +
-        geom_jitter(data = df, mapping = aes(x=disease, y=ratio), width = 0.2, alpha=0.5) +
-        geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se), width=.1, linewidth=1) +
-        labs(x="", y=metric) +
-        my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1)) 
+  p <- ggplot(df_se, aes(x=disease, y=ratio, fill=tools)) +
+    geom_bar(stat = "identity", position=position_dodge(0.9), width=0.5) +
+    geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se), linewidth =.7, width=.1, position=position_dodge(0.9)) +
+    geom_jitter(data = df, mapping = aes(x=disease, y=ratio, color=tools), position = position_jitterdodge(dodge.width = 0.9), alpha=0.5) +
+    labs(x="", y=metric) +
+    my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))
   return(p)
 }
