@@ -1,5 +1,7 @@
 import warnings
 import argparse
+import json
+import math
 import sys
 import os
 import numpy as np
@@ -20,6 +22,7 @@ def read_params():
     parser.add_argument("-a", "--add", action="store", nargs='*', help="a list, choice one or more from [Gender, Age, BMI]")
     parser.add_argument("-m", "--model", default="RF", choices=["RF", "SVM"], help="choose a model")
     parser.add_argument("-f", "--fold", type=int, default=5, help="cv")
+    parser.add_argument("-s", "--seed", type=int, help="random seed")
     #parser.add_argument("-l", "--label", default="Y", action="store", help="positive label name")
     parser.add_argument("-o", "--outdir", default=".", action="store", help="output file")
     args = parser.parse_args()
@@ -36,13 +39,13 @@ def merge_data(design, profile, label='Y'):
             n_label = round(y_label * 1.2)
         else:
             y_label = round(n_label * 1.2)
-        y_tmp = disease_info[disease_info["State"]==label].sample(n=y_label)
-        n_tmp = disease_info[disease_info["State"]!=label].sample(n=n_label)
+        y_tmp = disease_info[disease_info["State"]==label].sample(n=y_label, random_state=42)
+        n_tmp = disease_info[disease_info["State"]!=label].sample(n=n_label, random_state=42)
         disease_info = pd.concat([y_tmp,n_tmp],  ignore_index = True)
         #shuffle_index = np.random.permutation(len(disease_info))
         #disease_info = disease_info.iloc[shuffle_index]
         return disease_info
-    
+
 def select_set(disease_info, feature_li=0):
     col_index = []
     if feature_li != 0:
@@ -63,7 +66,7 @@ def metrics_test(y, y_train_pred):
 
 # Grid search para
 def grid_search(model, param_grid, x_train, y_train, cv=5):
-    search_res = GridSearchCV(model, param_grid, cv=cv, scoring='neg_mean_squared_error', return_train_score=True)
+    search_res = GridSearchCV(model, param_grid, cv=cv, scoring='roc_auc', return_train_score=True)
     search_res.fit(x_train, y_train)
     return search_res
 
@@ -74,6 +77,12 @@ def train_model(model, x_train, y_train, x_test):
     y_pred_score = model.predict_proba(x_test)
     return [y_pred, y_pred_score]
 
+# step
+def features_step(x_train):
+    a = math.ceil(np.sqrt(len(x_train.columns)))
+    b = round(np.log2(len(x_train.columns)))
+    step = round((a - b) / 5)
+    return range(b, a, step)
 
 if __name__ == "__main__":
     # ignore warnings
@@ -84,6 +93,7 @@ if __name__ == "__main__":
     model_name = args.model
     #label = args.label
     cv = args.fold
+    seed = args.seed
     disease_info = merge_data(run_design, run_profile)
     disease_info["State"][disease_info["State"]=="N"] = 0
     disease_info["State"][disease_info["State"]=="Y"] = 1
@@ -98,23 +108,32 @@ if __name__ == "__main__":
     Y = Y.astype("int")
 
     # divide train and test set
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, stratify=Y)
+
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, random_state=seed, stratify=Y)
+
 
     # select model and grid search
     if model_name == "RF":
-        rf_param = [{"n_estimators": [500, 750, 1000]}]
-        model = RandomForestClassifier(n_estimators=500, n_jobs=-1)
-    '''  
-        search_res = grid_search(model, rf_param, X_train, Y_train)
-      #print(search_res.best_params_)
-       # for i, j in search_res.best_params_:
-       #     print("%s: %d" % (i, j))
-        best_model = search_res.best_estimator_
-    
+
+        model = RandomForestClassifier()
+
+        param_grid = [{'criterion':['gini', 'entropy'],
+                       "n_estimators": range(220, 510, 30),
+                       "max_depth":range(12, 30, 4),
+                       "max_features":features_step(X_train),
+                     }]
+        search_res = grid_search(model, param_grid, X_train, Y_train, cv=5)
+        print(search_res.best_params_)
+        best_params = search_res.best_params_
+
+        #best_params = {'criterion': 'gini', 'max_depth': 24, 'max_features': 28, 'n_estimators': 500}
+        model = RandomForestClassifier(n_estimators=best_params["n_estimators"],
+                                       criterion=best_params["criterion"],
+                                       max_depth=best_params["max_depth"],
+                                       max_features=best_params["max_features"],
+                                       n_jobs=-1)
     elif model_name == "SVM":
-        model = SVC(C=1, probability=True)
         pass
-    '''
     # train model and predict
     y_pred, y_pred_score = train_model(model, X_train, Y_train, X_test)
     metrics = metrics_test(Y_test, y_pred)
@@ -123,13 +142,19 @@ if __name__ == "__main__":
     outdir = args.outdir
     if not os.path.exists(outdir):
         os.makedirs(outdir)
+
+    # write best params write into json file
+    json_best_param = json.dumps(best_params, indent=4)
+    with open(outdir + '/' + 'best_param.json', 'w') as json_file:
+        json_file.write(json_best_param)
+
     f_metrics = open(outdir + '/' + "metrics.txt", 'w')
     for i in metrics:
         print("%s:%f" % (i, metrics[i]))
         f_metrics.write(i + ":"+str(metrics[i]) + '\n')
     print("AUC:%f" % auc_area)
-    
-    f_metrics.write("AUC area:" + str(auc_area) + '\n')
+
+    f_metrics.write("AUC:" + str(auc_area) + '\n')
     f_metrics.close()
 
     fpr_forest, tpr_forest, thresholds_forest = roc_curve(Y_test, y_pred_score[:,1])
