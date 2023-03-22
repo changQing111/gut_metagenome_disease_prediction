@@ -9,6 +9,8 @@ my_theme <- theme(panel.background = element_blank(),
                   strip.text.x = element_text(size = 14), 
                   panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))
 
+
+
 # ROC curve values
 read_roc_data <- function(target_dir, data_set, ...) {
   disease_li <- paste(target_dir, data_set, sep = "/")
@@ -51,6 +53,18 @@ li_to_df <- function(li) {
     df <- rbind(df, li[[i]])
   }
   return(df)
+}
+
+plot_auc_violin <- function(df, disease) {
+  pdf(paste0(disease, "_AUC.pdf"), width = 6, height = 5)
+  p <- df %>% ggplot(aes(x=tools, y=AUC)) +
+    geom_violin(aes(fill=tools), width=0.7, trim = FALSE) + 
+    geom_boxplot(width=0.1) + 
+    geom_jitter(colour="grey", width = 0.1) +
+    labs(x="", y="AUC", title = disease) +
+    my_theme 
+  print(p)
+  dev.off()  
 }
 
 # 20 groups ROC curve
@@ -100,17 +114,20 @@ add_ci <- function(roc_li, tool) {
   return(roc_curve_tbl)
 }
 
-get_roc_curve_data <- function(disease, target_dir1, target_dir2,
+get_roc_curve_data <- function(disease, mean_auc, target_dir1, target_dir2,
                                tools_1, tools_2) {
   roc_li_1 <- read_roc_data(target_dir1, disease)
   roc_li_2 <- read_roc_data(target_dir2, disease)
   
   roc_1 <- add_ci(roc_li_1, tools_1)
   roc_2 <- add_ci(roc_li_2, tools_2)
+  roc_1$tools <- set_auc_factor(mean_auc, disease, tools_1)
+  roc_2$tools <- set_auc_factor(mean_auc, disease, tools_2)
+  
   return(rbind(roc_1, roc_2))
 }
 
-plot_ROC_curve <- function(df, title) {
+plot_ROC_curve <- function(df, title, auc_df) {
   x = runif(100000)
   y = x
   subline = data.frame(x = x, y=y)
@@ -119,12 +136,12 @@ plot_ROC_curve <- function(df, title) {
     geom_line(aes(colour=tools), linewidth = 1) +
     geom_ribbon(aes(ymin = CI_l, ymax = CI_r, fill=tools), alpha=0.3) +
     labs(x= "False positive rate", y="True positive rate", title = title) +
-    my_theme + theme(legend.position = c(0.8,0.2))
+    my_theme + theme(legend.position = c(0.6,0.2))
   return(p)
 }
 
 ci_value <- function(auc_df, tool) {
-  arr = auc_df$`AUC area`[auc_df$tools==tool]
+  arr = auc_df$AUC[auc_df$tools==tool]
   len = length(arr)
   mean_arr <- mean(arr)
   sd_arr <- sd(arr)
@@ -139,8 +156,8 @@ ci_value <- function(auc_df, tool) {
 # plot metrics boxplot
 plot_metric_box <- function(df, metric) {
   p <- ggplot(df, aes(x=disease, y=ratio, fill=tools)) +
-    geom_boxplot(width=0.5,position=position_dodge(0.9), alpha=0.6, outlier.shape = NA) + 
-    geom_jitter(aes(colour=tools), position = position_jitterdodge(dodge.width = 0.9)) +
+    geom_boxplot(width=0.5,position=position_dodge(0.9), alpha=0.5, outlier.shape = NA) + 
+    geom_jitter(aes(colour=tools), position = position_jitterdodge(dodge.width = 0.9), size=1) +
     labs(x="", y=metric) +
     my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1)) 
     #+ scale_y_continuous(expand = c(0, 0),limits=c(0.8, 1.01),
@@ -153,10 +170,45 @@ plot_metric_box <- function(df, metric) {
 plot_metric_bar <- function(df, metric) {
   df_se <- summarySE(df, measurevar = "ratio", groupvars = c("disease", "tools"))
   p <- ggplot(df_se, aes(x=disease, y=ratio, fill=tools)) +
+    #geom_jitter(data = df, mapping = aes(x=disease, y=ratio, color=tools), 
+    #            position = position_jitterdodge(dodge.width = 0.9), size=1, alpha=0.5) +
     geom_bar(stat = "identity", position=position_dodge(0.9), width=0.5) +
     geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se), linewidth =.7, width=.1, position=position_dodge(0.9)) +
-    geom_jitter(data = df, mapping = aes(x=disease, y=ratio, color=tools), position = position_jitterdodge(dodge.width = 0.9), alpha=0.5) +
     labs(x="", y=metric) +
     my_theme +  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))
   return(p)
+}
+
+# output args
+out_args <- function(parser=parse) {
+  argument = vector(length = length(parser))
+  for(i in 1:length(parser)) {
+    argument[i] <- parser[[i]] 
+  }
+  args_df <- data.frame(parameter=names(parser) , argument=argument)
+  write.csv(args_df, "args.csv", row.names = F, quote = F)
+}
+
+get_mean_auc <- function(all_metric_df, metric="AUC", disease_set=s, tools1=t1, tools2=t2) {
+  disease_v <- vector()
+  tools_v <- vector()
+  auc_v <- vector()
+  for(i in disease_set) {
+    for(j in c(tools1, tools2)) {
+      disease_v <- c(disease_v, i)
+      tools_v <- c(tools_v, j)
+      mean_auc <- all_metric_df %>% 
+        filter(disease==i, tools==j, metrics==metric) %>% 
+        select(ratio) %>% unlist() %>% mean() %>% round(3)
+      auc_v <- c(auc_v, mean_auc)
+    }
+  }
+  mean_auc_df <- data.frame(disease = disease_v, tools=tools_v, AUC=auc_v)
+  return(mean_auc_df)
+}
+
+set_auc_factor <- function(mean_auc, disea, tool) {
+  auc <- mean_auc %>% filter(disease==disea, tools==tool) %>% select(AUC) %>% unlist() %>% as.character() 
+  auc <- paste(tool, "AUC =", auc)    
+  return(auc)
 }
