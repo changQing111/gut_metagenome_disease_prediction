@@ -57,24 +57,6 @@ def distance(dic1, dic2, inter_set):
         euc_dist = -1
     return euc_dist
 
-def file_search(query, obj_list):
-    query_profile_name = query + "_profile/" + query
-    query_dic = trav_profile(query_profile_name)
-    query_set = set(query_dic)
-    
-    search_res = open(query + "_search_" + obj_list, 'w')
-    obj_file = open("../" + obj_list, "rt")
-    for j in obj_file:
-        obj_profile_name = j.rstrip() + "_profile/" + j.strip()
-        obj_dic = trav_profile(obj_profile_name)
-        obj_set = set(obj_dic)
-        inter_set, jacc_s = jaccard(query_set, obj_set)
-        dist = distance(query_dic, obj_dic, inter_set)
-        search_res.write(query + "\t" + j.rstrip() + "\t" + str(jacc_s) + "\t" + str(dist) + "\n")
-    print(".....", end="")
-    search_res.close()
-    obj_file.close()
-
 def block_search(query, obj_dic, obj_num, out_dir):
     query_profile_name = query + "_profile/" + query
     query_dic = trav_profile(query_profile_name)
