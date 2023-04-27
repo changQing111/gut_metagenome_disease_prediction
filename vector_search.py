@@ -7,6 +7,7 @@ import json
 import pickle
 import gzip
 import argparse
+import pandas as pd
 
 def parse_args():
     parser = argparse.ArgumentParser(description="metagenome prfoile vector search")
@@ -23,6 +24,7 @@ def parse_args():
     subparser2 = subparsers.add_parser('search', help='search vector')
     subparser2.add_argument('-q', '--query', help='query vector list')
     subparser2.add_argument('-s', '--subject', help='subject index dir')
+    subparser2.add_argument('-i', '--info', help="searched accession label info")
     subparser2.add_argument('-o', '--out', help='out dir')
 
     args = parser.parse_args()
@@ -131,7 +133,14 @@ def file_block(file_name, nrow, n_block):
                 break
         all_li.append(li)
     return all_li
-            
+
+def add_label(search_res_file, label_file):
+    search_res = pd.read_table(search_res_file, header=None, index_col=None)
+    search_res.columns = ["query", "run_accession", "jaccard", "distance"]
+    label = pd.read_csv(label_file)
+    merge_df = pd.merge(search_res, label, on='run_accession', how='left')
+    merge_df.rename(columns={merge_df.columns[1]: 'subject'}, inplace=True)
+    return(merge_df)
 
 if __name__=="__main__":
     args = parse_args()
@@ -156,10 +165,14 @@ if __name__=="__main__":
         merge_cmd = "cat %s/*_search_*.tmp > %s/%s_search_res.txt && rm -rf %s/*_search_*.tmp"
         sort_cmd = "sort -n -r -k3 %s/%s_search_res.txt |head -n100 > %s/%s_search_res_sort.txt && rm -rf %s/%s_search_res.txt"
         query_li = args.query
+        label=args.info
         # load dump index
         obj_dir = args.subject
+
         index_li = os.listdir(obj_dir)
         dump_args_li = [obj_dir + "/" + i for i in index_li]
+        #multiprocess(load_dump, dump_args_li)
+        #print(dump_args_li[0])
         search_li = multipool(load_dump, dump_args_li)
         print("load finised, start search!")
         # search
@@ -172,9 +185,12 @@ if __name__=="__main__":
             #for j in range(len(search_li)):
             state = subprocess.call(merge_cmd % (out_dir, out_dir, i, out_dir), shell=True)
             state = subprocess.call(sort_cmd % (out_dir, i, out_dir, i, out_dir, i), shell=True)
-            
+            out_file_name = out_dir + "/" + i + "_search_res_sort.txt"
+            merge_df = add_label(out_file_name, label)            
+            merge_df.to_csv(out_file_name, header=True, index=False, sep="\t")
             print("")
             print(i + " search finised !")
+         
         print("All query search finised !")
         query.close()
         
