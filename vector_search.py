@@ -160,8 +160,6 @@ if __name__=="__main__":
         obj_dir = args.subject
         index_li = os.listdir(obj_dir)
         dump_args_li = [obj_dir + "/" + i for i in index_li]
-        #multiprocess(load_dump, dump_args_li)
-        #print(dump_args_li[0])
         search_li = multipool(load_dump, dump_args_li)
         print("load finised, start search!")
         # search
