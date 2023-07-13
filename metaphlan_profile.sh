@@ -1,4 +1,4 @@
-REF_DB=/home/changqing/Document/metaphlan_db/bowtie_db/mpa_v31_CHOCOPhlAn_201901
+REF_DB=/home/changqing/Document/metaphlan_db/mpa_v31_CHOCOPhlAn_201901
 INPUT=${1}.fastq
 TEMP=${1}.bowtie2.bz2
 OUT=${1}_profile.txt
