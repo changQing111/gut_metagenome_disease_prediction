@@ -212,17 +212,3 @@ set_auc_factor <- function(mean_auc, disea, tool) {
   auc <- paste(tool, "AUC =", auc)    
   return(auc)
 }
-# plot boxplot paired lines
-tmp_test <- function() {
-  all_metric_df <- read_csv("kssd_L3K11_gtdb_best_par_res/all_metrics.csv", col_names = T)
-  all_auc_df <- all_metric_df %>% filter(metrics=="AUC", disease=="Obesity_ERP003612")  
-  all_auc_df$group <- c(1:20, 1:20)
-  all_auc_df %>% ggplot(aes(x=tools, y=ratio, fill=tools)) +
-    geom_boxplot(width=0.3,position=position_dodge(0.9), alpha=0.5) + 
-    geom_point(aes(colour=tools), size=1) +
-    geom_line(aes(x=tools,y=ratio, group=group), linewidth=0.5, colour="grey", alpha=0.8) +
-    my_theme + 
-    theme(axis.ticks.x = element_blank(),
-          axis.text.x = element_blank()) + 
-    labs(x="Obesity_ERP003612", y="AUC")
-}
