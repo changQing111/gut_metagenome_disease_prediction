@@ -1,4 +1,4 @@
-## Gut metagenomic aata predicting disease: Based on kssd and classical machine learning algorithms
+## Gut metagenomic aata predicting disease: Based on classical machine learning algorithms
 
 #### 1. Download SRA data from NCBI and ENA ,then sketch data by kssd
 ```shell
